@@ -1,0 +1,6 @@
+@SpCollectorsAdminApi_HostAddress = http://localhost:5162
+
+GET {{SpCollectorsAdminApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
