@@ -15,6 +15,11 @@ namespace SpCollectorsAdminApi.Data
                 .HasMany(c => c.Entries)
                 .WithOne(p => p.CollectorEntry)
                 .HasForeignKey(p => p.CollectorEntryId);
+
+            modelBuilder.Entity<PaymentDetail>()
+            .HasOne(p => p.PlanDetail)
+            .WithMany(d => d.Payments)
+            .HasForeignKey(p => p.PlanDetailId);
         }
 
 

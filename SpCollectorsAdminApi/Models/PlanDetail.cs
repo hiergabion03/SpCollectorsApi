@@ -18,18 +18,24 @@ namespace SpCollectorsAdminApi
         public DateTime? DueDate { get; set; }
         public double? QuotaComm { get; set; }
         public double? QuotaNComm { get; set; }
-        public string? CBI { get; set; }
+        public double? CBI { get; set; }
         public string? InstNo { get; set; }
         public int? Aging { get; set; } 
         public double? Balance { get; set; }
-        public double? Tax { get; set; } 
+        public string? Tax { get; set; } 
         public string? Ins { get; set; }
-        public string? ORNo { get; set; }
-        public DateTime? ORDate { get; set; } 
-        public double? CollDue { get; set; } 
-        public double? CollAdvance { get; set; }
+        //public string? ORNo { get; set; }
+        //public DateTime? ORDate { get; set; } 
+        //public double? CollDue { get; set; } 
+        //public double? CollAdvance { get; set; }
         public int CollectorEntryId { get; set; }
+        public string? CollectorName { get; set; }
+        public string? CollectorCode { get; set; }
+        public string? Period { get; set; }
         public CollectorEntry CollectorEntry { get; set; } = null!;
+        public List<PaymentDetail> Payments { get; set; } = new();
     }
+
+
 
 }

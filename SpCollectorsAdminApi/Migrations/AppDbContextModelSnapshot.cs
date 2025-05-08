@@ -37,6 +37,34 @@ namespace SpCollectorsAdminApi.Migrations
                     b.ToTable("CollectorEntry");
                 });
 
+            modelBuilder.Entity("SpCollectorsAdminApi.PaymentDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("CollAdvance")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("CollDue")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime?>("ORDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ORNo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PlanDetailId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanDetailId");
+
+                    b.ToTable("PaymentDetail");
+                });
+
             modelBuilder.Entity("SpCollectorsAdminApi.PlanDetail", b =>
                 {
                     b.Property<int>("Id")
@@ -49,17 +77,17 @@ namespace SpCollectorsAdminApi.Migrations
                     b.Property<double?>("Balance")
                         .HasColumnType("REAL");
 
-                    b.Property<string>("CBI")
+                    b.Property<double?>("CBI")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("CollectorCode")
                         .HasColumnType("TEXT");
-
-                    b.Property<double?>("CollAdvance")
-                        .HasColumnType("REAL");
-
-                    b.Property<double?>("CollDue")
-                        .HasColumnType("REAL");
 
                     b.Property<int>("CollectorEntryId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("CollectorName")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ContractNo")
                         .HasColumnType("TEXT");
@@ -82,10 +110,7 @@ namespace SpCollectorsAdminApi.Migrations
                     b.Property<int>("Number")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("ORDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ORNo")
+                    b.Property<string>("Period")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Plan")
@@ -100,14 +125,25 @@ namespace SpCollectorsAdminApi.Migrations
                     b.Property<double?>("QuotaNComm")
                         .HasColumnType("REAL");
 
-                    b.Property<double?>("Tax")
-                        .HasColumnType("REAL");
+                    b.Property<string>("Tax")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CollectorEntryId");
 
                     b.ToTable("PlanDetail");
+                });
+
+            modelBuilder.Entity("SpCollectorsAdminApi.PaymentDetail", b =>
+                {
+                    b.HasOne("SpCollectorsAdminApi.PlanDetail", "PlanDetail")
+                        .WithMany("Payments")
+                        .HasForeignKey("PlanDetailId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlanDetail");
                 });
 
             modelBuilder.Entity("SpCollectorsAdminApi.PlanDetail", b =>
@@ -124,6 +160,11 @@ namespace SpCollectorsAdminApi.Migrations
             modelBuilder.Entity("SpCollectorsAdminApi.CollectorEntry", b =>
                 {
                     b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("SpCollectorsAdminApi.PlanDetail", b =>
+                {
+                    b.Navigation("Payments");
                 });
 #pragma warning restore 612, 618
         }

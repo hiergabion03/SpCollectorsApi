@@ -51,24 +51,6 @@ namespace SpCollectorsAdminApi.Controllers
                 return BadRequest(ex.Message);
             }
 
-
-            if (file == null || file.Length == 0)
-                return BadRequest("File is required.");
-
-            try
-            {
-                var result = await _uploadService.HandleUploadAsync(file);
-                return Ok(new
-                {
-                    Message = "Upload successful",
-                    UploadedCount = result.Sum(c => c.Entries.Count),
-                    CollectorCount = result.Count
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
         }
 
     }

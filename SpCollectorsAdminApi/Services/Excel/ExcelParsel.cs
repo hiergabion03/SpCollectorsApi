@@ -1,4 +1,6 @@
-﻿using ClosedXML.Excel;
+﻿using System.Diagnostics.Contracts;
+using ClosedXML.Excel;
+using NPOI.POIFS.Properties;
 using SpCollectorsAdminApi;
 
 
@@ -6,24 +8,46 @@ namespace SpCollectorsAdminApi.Services.Excel
 {
     public class ExcelParsel
     {
-
-        public List<CollectorEntry> ParseExcel(Stream stream)
+        public List<CollectorEntry> ParseExcel(Stream stream, string filename)
         {
             var workbook = new XLWorkbook(stream);
             var sheet = workbook.Worksheet(1);
-
+            PlanDetail? lastPlan = null;
             var collectorEntries = new List<CollectorEntry>();
             CollectorEntry? currentCollector = null;
 
             foreach (var row in sheet.RowsUsed().Where(r => r.RowNumber() >= 18))
             {
-                var firstCell = row.Cell(1).GetString().Trim();
+                var cell1 = row.Cell(1).GetString().Trim();
+                var cell2 = row.Cell(2).GetString().Trim();
 
-
-                // 📌 Step 1: Identify a collector row (e.g., "ALCANTARA, RAQUEL - (VIRAC25SA100007)")
-                if (string.IsNullOrWhiteSpace(firstCell))
+                if (row.Cell(4).GetString().Trim().Equals("Accounts", StringComparison.OrdinalIgnoreCase))
                 {
-                    var maybeName = row.Cell(2).GetString().Trim();
+                    break;
+                }
+
+                if (lastPlan != null &&
+                     string.IsNullOrWhiteSpace(row.Cell(1).GetString()) &&
+                     string.IsNullOrWhiteSpace(row.Cell(2).GetString()) &&
+                     !string.IsNullOrWhiteSpace(row.Cell(43).GetString()))
+                {
+                    var additionalPayment = new PaymentDetail
+                    {
+                        ORNo = row.Cell(43).GetString(),
+                        ORDate = GetDateTimeValue(row.Cell(45)),
+                        CollDue = GetDoubleValue(row.Cell(49)),
+                        CollAdvance = GetDoubleValue(row.Cell(53))
+                    };
+
+                    lastPlan.Payments.Add(additionalPayment);
+                    continue;
+                }
+
+
+             
+                if (string.IsNullOrWhiteSpace(cell1))
+                {
+                    var maybeName = cell2;
                     if (!string.IsNullOrWhiteSpace(maybeName) && maybeName.Contains("- ("))
                     {
                         var nameParts = maybeName.Split(" - ");
@@ -33,7 +57,8 @@ namespace SpCollectorsAdminApi.Services.Excel
                         currentCollector = new CollectorEntry
                         {
                             CollectorName = collectorName,
-                            CollectorCode = collectorCode
+                            CollectorCode = collectorCode,
+                            Period = ExcelUploadService.ExtractPeriodFromFilename(filename)
                         };
 
                         collectorEntries.Add(currentCollector);
@@ -42,11 +67,12 @@ namespace SpCollectorsAdminApi.Services.Excel
                     continue;
                 }
 
-                // 📌 Step 2: Parse plan rows (they start with a row number like "1", "2", etc.)
-                if (int.TryParse(firstCell, out _))
+                
+
+                // 📌 Step 3: New PlanDetail Entry
+                if (int.TryParse(cell1, out _))
                 {
-                    if (currentCollector == null)
-                        continue; // Defensive: skip if no collector defined yet
+                    if (currentCollector == null) continue;
 
                     try
                     {
@@ -54,30 +80,38 @@ namespace SpCollectorsAdminApi.Services.Excel
                         {
                             Number = row.Cell(1).GetValue<int>(),
                             ContractNo = row.Cell(4).GetString(),
-                            Planholder = row.Cell(6).GetString(),
-                            Plan = row.Cell(11).GetString(),
+                            Planholder = row.Cell(9).GetString(),
+                            Plan = row.Cell(15).GetString(),
                             Description = row.Cell(18).GetString(),
-                            EffectiveDate = GetDateTimeValue(row.Cell(14)),
-                            DueDate = GetDateTimeValue(row.Cell(15)),
-                            QuotaComm = GetDoubleValue(row.Cell(16)),
-                            QuotaNComm = GetDoubleValue(row.Cell(19)),
-                            CBI = row.Cell(21).GetString(),
-                            InstNo = row.Cell(22).GetString(),
-                            Aging = row.Cell(23).GetValue<int>(),
-                            Balance = GetDoubleValue(row.Cell(25)),
-                            Tax = GetDoubleValue(row.Cell(26)),
-                            Ins = row.Cell(27).GetString(),
-                            ORNo = row.Cell(29).GetString(),
-                            ORDate = GetDateTimeValue(row.Cell(31)),
-                            CollDue = GetDoubleValue(row.Cell(33)),
-                            CollAdvance = GetDoubleValue(row.Cell(35))
+                            EffectiveDate = GetDateTimeValue(row.Cell(23)),
+                            DueDate = GetDateTimeValue(row.Cell(24)),
+                            QuotaComm = GetDoubleValue(row.Cell(27)),
+                            QuotaNComm = GetDoubleValue(row.Cell(30)),
+                            CBI = GetDoubleValue(row.Cell(34)),
+                            InstNo = row.Cell(35).GetString(),
+                            Aging = row.Cell(36).GetValue<int?>(),
+                            Balance = GetDoubleValue(row.Cell(38)),
+                            Tax = row.Cell(41).GetString(),
+                            Ins = row.Cell(42).GetString(),
+                            CollectorName = currentCollector.CollectorName,
+                            CollectorCode = currentCollector.CollectorCode,
+                            Period = currentCollector.Period
                         };
 
+                        plan.Payments.Add(new PaymentDetail
+                        {
+                            ORNo = row.Cell(43).GetString(),
+                            ORDate = GetDateTimeValue(row.Cell(45)),
+                            CollDue = GetDoubleValue(row.Cell(49)),
+                            CollAdvance = GetDoubleValue(row.Cell(53))
+                        });
+
                         currentCollector.Entries.Add(plan);
+                        lastPlan = plan;
                     }
                     catch
                     {
-                        // Log or handle malformed rows if needed
+                        // Log or skip malformed rows
                         continue;
                     }
                 }
@@ -86,34 +120,47 @@ namespace SpCollectorsAdminApi.Services.Excel
             return collectorEntries;
         }
 
-        private double? TryParseDouble(string input)
-        {
-            if (double.TryParse(input?.Replace(",", "").Trim(), out var val))
-                return val;
-
-            return null;
-        }
-
-        
-
         private double? GetDoubleValue(IXLCell cell)
         {
+            // Try reading numeric value directly if it's a number
             if (cell.DataType == XLDataType.Number)
-            {
                 return cell.GetDouble();
-            }
+
+            // Try parsing formatted string fallback
+            var raw = cell.GetFormattedString().Trim();
+
+            if (string.IsNullOrWhiteSpace(raw) || raw == "-")
+                return null;
+
+            // Handle formatted negative values like (1,234.00)
+            raw = raw.Replace(",", "").Replace("(", "-").Replace(")", "");
+
+            if (double.TryParse(raw, out var result))
+                return result;
+
+            Console.WriteLine($"⚠️ Failed to parse double from: '{raw}'");
             return null;
         }
 
-        // Helper method to get DateTime value from a cell
         private DateTime? GetDateTimeValue(IXLCell cell)
         {
+            // Try direct cast if the cell is a DateTime
             if (cell.DataType == XLDataType.DateTime)
-            {
                 return cell.GetDateTime();
-            }
+
+            // Fallback: try parsing as string
+            var raw = cell.GetFormattedString().Trim();
+
+            if (string.IsNullOrWhiteSpace(raw) || raw == "-")
+                return null;
+
+            if (DateTime.TryParse(raw, out var parsed))
+                return parsed;
+
+            Console.WriteLine($"⚠️ Failed to parse date from: '{raw}'");
             return null;
         }
+
     }
 }
 

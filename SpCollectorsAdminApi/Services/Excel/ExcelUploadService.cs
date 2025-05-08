@@ -21,7 +21,7 @@ namespace SpCollectorsAdminApi.Services.Excel
             string period = ExtractPeriodFromFilename(file.FileName);
 
             using var stream = file.OpenReadStream();
-            var collectorEntries = _excelParsel.ParseExcel(stream);
+            var collectorEntries = _excelParsel.ParseExcel(stream, file.FileName);
 
             AttachPeriodAndRelationships(collectorEntries, period);
 
@@ -54,7 +54,7 @@ namespace SpCollectorsAdminApi.Services.Excel
         }
 
         // Remove old entries for the same period and insert new ones
-        private async Task ReplaceExistingPeriodDataAsync(string period, List<CollectorEntry> newEntries)
+        public  async Task ReplaceExistingPeriodDataAsync(string period, List<CollectorEntry> newEntries)
         {
             var oldEntries = _dbContext.CollectorEntry.Where(c => c.Period == period);
             _dbContext.CollectorEntry.RemoveRange(oldEntries);
@@ -64,30 +64,23 @@ namespace SpCollectorsAdminApi.Services.Excel
             await _dbContext.SaveChangesAsync();
         }
 
-        private string ExtractPeriodFromFilename(string filename)
+        public static string ExtractPeriodFromFilename(string filename)
         {
-            var name = Path.GetFileNameWithoutExtension(filename).ToUpper();
+            if (string.IsNullOrWhiteSpace(filename))
+                throw new ArgumentException("Filename cannot be null or empty.");
 
-            // Step 1: Find the year in the filename (we are looking for 4 digits, like "2025")
-            var yearMatch = System.Text.RegularExpressions.Regex.Match(filename, @"\d{4}");
+            // Extract the month and year using a regex pattern
+            var match = System.Text.RegularExpressions.Regex.Match(filename, @"([A-Z]+)(\d{4})", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-            if (yearMatch.Success)
+            if (match.Success)
             {
-                // Step 2: Extract the part before the year
-                var monthYearPart = filename.Substring(filename.LastIndexOf('_') + 1, yearMatch.Index + 4 - (filename.LastIndexOf('_') + 1));
+                var month = match.Groups[1].Value.ToUpper(); // Extract the month part
+                var year = match.Groups[2].Value;           // Extract the year part
 
-                // Step 3: Extract the month and year
-                var month = new string(monthYearPart.TakeWhile(c => char.IsLetter(c)).ToArray());
-                var year = yearMatch.Value;
-
-    
-                
-                return $"{month}{year}"; // e.g., "JANUARY2025"
-                    
-                
+                return $"{month}{year}";
             }
 
-            throw new InvalidOperationException("Filename does not contain a valid period format (e.g., JANUARY2025).");
+            throw new InvalidOperationException("Filename does not contain a valid period format (e.g., APRIL2025).");
         }
 
 
