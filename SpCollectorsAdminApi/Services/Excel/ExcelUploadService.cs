@@ -83,6 +83,13 @@ namespace SpCollectorsAdminApi.Services.Excel
             throw new InvalidOperationException("Filename does not contain a valid period format (e.g., APRIL2025).");
         }
 
+        public class UploadResult
+        {
+            public List<CollectorEntry> CollectorEntries { get; set; } = new();
+            public List<AgingSummaryEntity> AgingSummaries { get; set; } = new();
+            public List<FinancialSummaryEntity> FinancialSummaries { get; set; } = new();
+        }
+
 
     }
 }
