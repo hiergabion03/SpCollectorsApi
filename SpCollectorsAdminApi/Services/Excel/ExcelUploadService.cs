@@ -86,8 +86,8 @@ namespace SpCollectorsAdminApi.Services.Excel
         public class UploadResult
         {
             public List<CollectorEntry> CollectorEntries { get; set; } = new();
-            public List<AgingSummaryEntity> AgingSummaries { get; set; } = new();
-            public List<FinancialSummaryEntity> FinancialSummaries { get; set; } = new();
+            //public List<AgingSummaryEntity> AgingSummaries { get; set; } = new();
+            //public List<FinancialSummaryEntity> FinancialSummaries { get; set; } = new();
         }
 
 
